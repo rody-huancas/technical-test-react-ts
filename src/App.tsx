@@ -8,6 +8,9 @@ function App() {
   const [showColors, setShowColors] = useState(false);
   const [sorting, setSorting] = useState<SortBy>(SortBy.NONE);
   const [filterCountry, setFilterCountry] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const originalUsers = useRef<User[]>([]);
 
@@ -35,16 +38,29 @@ function App() {
   };
 
   useEffect(() => {
-    fetch("https://randomuser.me/api?results=100")
-      .then((res) => res.json())
+    setLoading(true);
+    setError(false);
+    fetch(`https://randomuser.me/api?results=10&seed=rody&page=${currentPage}`)
       .then((res) => {
-        setUsers(res.results);
+        if (!res.ok) throw new Error("Error en la petición");
+        return res.json();
+      })
+      .then((res) => {
+        setUsers((prevUsers) => {
+          const newUsers = prevUsers.concat(res.results);
+          originalUsers.current = newUsers;
+          return newUsers;
+        });
         originalUsers.current = res.results;
       })
       .catch((err) => {
         console.log(err);
+        setError(err);
+      })
+      .finally(() => {
+        setLoading(false);
       });
-  }, []);
+  }, [currentPage]);
 
   const filteredUsers = useMemo(() => {
     return filterCountry !== null && filterCountry.length > 0
@@ -90,12 +106,24 @@ function App() {
         />
       </header>
       <main>
-        <UsersLists
-          handleChageSort={handleChageSort}
-          deleteUser={handleDelete}
-          showColors={showColors}
-          users={sortedUsers}
-        />
+        {users.length > 0 && (
+          <UsersLists
+            handleChageSort={handleChageSort}
+            deleteUser={handleDelete}
+            showColors={showColors}
+            users={sortedUsers}
+          />
+        )}
+
+        {loading && <strong>Cargando...</strong>}
+        {!loading && error && <p>Ha habido un error</p>}
+        {!loading && !error && users.length === 0 && <p>No hay usuarios</p>}
+
+        {!loading && !error && (
+          <button onClick={() => setCurrentPage(currentPage + 1)}>
+            Cargar más resultados...
+          </button>
+        )}
       </main>
     </div>
   );
