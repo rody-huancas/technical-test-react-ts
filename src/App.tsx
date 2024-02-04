@@ -3,6 +3,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { SortBy, type User } from "./types.d";
 import { UsersLists } from "./components/UsersLists";
 
+const fetchUsers = async (page: number) => {
+  try {
+    const response = await fetch(
+      `https://randomuser.me/api?results=10&seed=rody&page=${page}`
+    );
+    if (!response.ok) {
+      throw new Error("Error en la petición");
+    }
+    const data = await response.json();
+    return data.results;
+  } catch (error) {
+    throw error;
+  }
+};
+
 function App() {
   const [users, setUsers] = useState<User[]>([]);
   const [showColors, setShowColors] = useState(false);
@@ -40,18 +55,14 @@ function App() {
   useEffect(() => {
     setLoading(true);
     setError(false);
-    fetch(`https://randomuser.me/api?results=10&seed=rody&page=${currentPage}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Error en la petición");
-        return res.json();
-      })
-      .then((res) => {
+
+    fetchUsers(currentPage)
+      .then((users) => {
         setUsers((prevUsers) => {
-          const newUsers = prevUsers.concat(res.results);
+          const newUsers = prevUsers.concat(users);
           originalUsers.current = newUsers;
           return newUsers;
         });
-        originalUsers.current = res.results;
       })
       .catch((err) => {
         console.log(err);
