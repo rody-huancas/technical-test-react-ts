@@ -1,33 +1,18 @@
 import "./App.css";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { SortBy, type User } from "./types.d";
 import { UsersLists } from "./components/UsersLists";
-
-const fetchUsers = async (page: number) => {
-  try {
-    const response = await fetch(
-      `https://randomuser.me/api?results=10&seed=rody&page=${page}`
-    );
-    if (!response.ok) {
-      throw new Error("Error en la petición");
-    }
-    const data = await response.json();
-    return data.results;
-  } catch (error) {
-    throw error;
-  }
-};
+import { useUsers } from "./hooks/useUsers";
 
 function App() {
-  const [users, setUsers] = useState<User[]>([]);
+  const { isLoading, isError, users, refetch, fetchNextPage, hasNextPage } =
+    useUsers();
+
   const [showColors, setShowColors] = useState(false);
   const [sorting, setSorting] = useState<SortBy>(SortBy.NONE);
   const [filterCountry, setFilterCountry] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
 
-  const originalUsers = useRef<User[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const toggleColors = () => {
     setShowColors(!showColors);
@@ -40,38 +25,17 @@ function App() {
   };
 
   const handleReset = () => {
-    setUsers(originalUsers.current);
+    void refetch();
   };
 
   const handleDelete = (email: string) => {
-    const filteredUsers = users.filter((user) => user.email !== email);
-    setUsers(filteredUsers);
+    // const filteredUsers = users.filter((user) => user.email !== email);
+    // setUsers(filteredUsers);
   };
 
   const handleChageSort = (sort: SortBy) => {
     setSorting(sort);
   };
-
-  useEffect(() => {
-    setLoading(true);
-    setError(false);
-
-    fetchUsers(currentPage)
-      .then((users) => {
-        setUsers((prevUsers) => {
-          const newUsers = prevUsers.concat(users);
-          originalUsers.current = newUsers;
-          return newUsers;
-        });
-      })
-      .catch((err) => {
-        console.log(err);
-        setError(err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [currentPage]);
 
   const filteredUsers = useMemo(() => {
     return filterCountry !== null && filterCountry.length > 0
@@ -126,14 +90,22 @@ function App() {
           />
         )}
 
-        {loading && <strong>Cargando...</strong>}
-        {!loading && error && <p>Ha habido un error</p>}
-        {!loading && !error && users.length === 0 && <p>No hay usuarios</p>}
+        {isLoading && <strong>Cargando...</strong>}
+        {!isLoading && isError && <p>Ha habido un error</p>}
+        {!isLoading && !isError && users.length === 0 && <p>No hay usuarios</p>}
 
-        {!loading && !error && (
-          <button onClick={() => setCurrentPage(currentPage + 1)}>
+        {!isLoading && !isError && hasNextPage == true && (
+          <button
+            onClick={() => {
+              void fetchNextPage();
+            }}
+          >
             Cargar más resultados...
           </button>
+        )}
+
+        {!isLoading && !isError && hasNextPage === false && (
+          <p>Ya no hay más resultados</p>
         )}
       </main>
     </div>
